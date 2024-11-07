@@ -1,6 +1,7 @@
 package com.example.inditex.controller;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
 import static org.hamcrest.CoreMatchers.containsString;
@@ -11,7 +12,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -42,23 +42,27 @@ public class PricesControllerTest {
 	@MockBean
 	private PricesService pricesService;
 
-	@BeforeEach
-	void setup() {		
-		PricesEntity pricesEntity = PricesEntity.builder()
-				.brandId(1)
-				.startDate(LocalDateTime.of(2020, 6, 14, 0, 0))
-				.endDate(LocalDateTime.of(2020, 6, 22, 10, 0))
-				.productId(35455)
-				.priceList(1)
-				.priority((short)1)
-				.price(35.5)
-				.curr("EUR").build();
+	private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
-		given(this.pricesService.getPrices(LocalDateTime.of(2020, 6, 14, 10, 0), 1, 35455)).willReturn(Optional.of(pricesEntity));
-	}
+	private PricesEntity createPriceEntity(long priceList, double price, String startDate, String endDate) {
+        return PricesEntity.builder()
+				.brandId(1)
+				.startDate(LocalDateTime.parse(startDate, formatter))
+				.endDate(LocalDateTime.parse(endDate, formatter))
+				.priceList(priceList)
+				.productId(35455)
+				.priority((short) 1)
+				.price(price)
+				.curr("EUR")
+				.build();
+    }
 
 	@Test
-	void givenParameters_whenGetPrices_AvailableDate_thenStatusOk_AndCheckPrice() throws Exception {
+	void givenParameters_whenGetPricesAt10amOnJune14_AvailableDate_thenStatusOk_AndCheckPrice() throws Exception {
+        PricesEntity mockEntity = createPriceEntity(1, 35.50, "2020-06-14T00:00:00", "2020-12-31T23:59:59");
+
+        given(pricesService.getPrices(LocalDateTime.parse("2020-06-14T10:00:00", formatter), 1, 35455)).willReturn(Optional.of(mockEntity));
+
 		ResultActions actions = mockMvc.perform(get("/api/v1/prices")
 				.queryParam("appTime", "2020-06-14T10:00:00")
 				.queryParam("brandId", "1")
@@ -72,9 +76,29 @@ public class PricesControllerTest {
 	}
 
 	@Test
-	void givenParameters_whenGetPrices_AvailableDate_thenStatus404_AndPricesNotFoundException() throws Exception {
+	void givenParameters_whenGetPricesAt16pmOnJune14_AvailableDate_thenStatusOk_AndCheckPrice() throws Exception {
+        PricesEntity mockEntity = createPriceEntity(2, 25.45, "2020-06-14T15:00:00", "2020-06-14T18:30:00");
+
+        given(pricesService.getPrices(LocalDateTime.parse("2020-06-14T16:00:00", formatter), 1, 35455)).willReturn(Optional.of(mockEntity));
+
 		ResultActions actions = mockMvc.perform(get("/api/v1/prices")
-				.queryParam("appTime", "2020-06-11T10:00:00")
+				.queryParam("appTime", "2020-06-14T16:00:00")
+				.queryParam("brandId", "1")
+				.queryParam("productId", "35455")
+			    .contentType(MediaType.APPLICATION_JSON)
+			    .accept(MediaType.APPLICATION_JSON))
+			.andExpect(status().isOk());
+		
+		actions.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+			.andExpect(jsonPath("$.price", is(25.45)));
+	}
+
+	@Test
+	void givenParameters_whenGetPricesAt21pmOnJune14_AvailableDate_thenStatusNotFoundException() throws Exception {
+        given(pricesService.getPrices(LocalDateTime.parse("2020-06-14T21:00:00", formatter), 1, 35455)).willReturn(Optional.empty());
+
+		ResultActions actions = mockMvc.perform(get("/api/v1/prices")
+				.queryParam("appTime", "2020-06-14T21:00:00")
 				.queryParam("brandId", "1")
 				.queryParam("productId", "35455")
 			    .contentType(MediaType.APPLICATION_JSON)
@@ -83,6 +107,42 @@ public class PricesControllerTest {
 		
 		actions.andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
 			.andExpect(jsonPath("$.detail", containsString("Price Not Found")));
+	}
+
+	@Test
+	void givenParameters_whenGetPricesAt10amOnJune15_AvailableDate_thenStatusOk_AndCheckPrice() throws Exception {
+        PricesEntity mockEntity = createPriceEntity(3, 30.50, "2020-06-15T00:00:00", "2020-06-15T11:00:00");
+
+        given(pricesService.getPrices(LocalDateTime.parse("2020-06-15T10:00:00", formatter), 1, 35455)).willReturn(Optional.of(mockEntity));
+
+		ResultActions actions = mockMvc.perform(get("/api/v1/prices")
+				.queryParam("appTime", "2020-06-15T10:00:00")
+				.queryParam("brandId", "1")
+				.queryParam("productId", "35455")
+			    .contentType(MediaType.APPLICATION_JSON)
+			    .accept(MediaType.APPLICATION_JSON))
+			.andExpect(status().isOk());
+		
+		actions.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+			.andExpect(jsonPath("$.price", is(30.50)));
+	}
+
+	@Test
+	void givenParameters_whenGetPricesAt21pmOnJune16_AvailableDate_thenStatusOk_AndCheckPrice() throws Exception {
+        PricesEntity mockEntity = createPriceEntity(4, 38.95, "2020-06-15T16:00:00", "2020-12-31T23:59:59");
+
+        given(pricesService.getPrices(LocalDateTime.parse("2020-06-16T21:00:00", formatter), 1, 35455)).willReturn(Optional.of(mockEntity));
+
+		ResultActions actions = mockMvc.perform(get("/api/v1/prices")
+				.queryParam("appTime", "2020-06-16T21:00:00")
+				.queryParam("brandId", "1")
+				.queryParam("productId", "35455")
+			    .contentType(MediaType.APPLICATION_JSON)
+			    .accept(MediaType.APPLICATION_JSON))
+			.andExpect(status().isOk());
+		
+		actions.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+			.andExpect(jsonPath("$.price", is(38.95)));
 	}
 
 }
