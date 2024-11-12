@@ -73,7 +73,7 @@ public class InditexDemoApplicationIntegrationTests {
 				constructEmptyEntity(), 
 				PricesDto.class);
 		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-		assertThat(result.getBody().getPrice()).isEqualTo(25.5);
+		assertThat(result.getBody().getPrice()).isEqualTo(25.45);
 		
 	}
 

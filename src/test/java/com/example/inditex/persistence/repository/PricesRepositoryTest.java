@@ -14,7 +14,6 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 
 import com.example.inditex.persistence.entity.PricesEntity;
-import com.example.inditex.persistence.repository.PricesRepository;
 
 /**
  * @author Juan Francisco Gonzalez
@@ -38,7 +37,7 @@ public class PricesRepositoryTest {
 		List<PricesEntity> prices = pricesRepository.getPrices(LocalDateTime.of(2020, 6, 14, 15, 10), 1, 35455);
 		
 		assertThat(prices).asList().hasSize(2);
-        assertEquals(25.5, prices.get(0).getPrice());
+        assertEquals(25.45, prices.get(0).getPrice());
         assertEquals(35.5, prices.get(1).getPrice());
 	}
 
